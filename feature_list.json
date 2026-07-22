@@ -1,0 +1,392 @@
+[
+  {
+    "id": "f-000-project-bootstrap",
+    "title": "Bootstrap del proyecto Expo",
+    "description": "Inicializar el proyecto Expo real dentro de src/ (Expo Router, TypeScript, alias @/*), con jest-expo y React Native Testing Library configurados. El registro del proyecto en EAS (slug/owner/projectId) lo hace el usuario de forma interactiva y se documenta en docs/tech-stack.md una vez exista.",
+    "status": "done",
+    "priority": "must",
+    "acceptance_criteria": [
+      "npx expo start arranca la app sin errores",
+      "Alias @/* resuelve a src/*",
+      "Un test de ejemplo en src/__tests__ pasa con npm test"
+    ],
+    "spec_path": "specs/f-000-project-bootstrap/",
+    "dependencies": [],
+    "tags": ["setup", "infra"],
+    "created_at": "2026-07-19T00:00:00Z",
+    "updated_at": "2026-07-19T13:00:00Z"
+  },
+  {
+    "id": "f-010-supabase-setup",
+    "title": "Integración de Supabase (cliente + esquema de BBDD)",
+    "description": "Configurar el cliente de Supabase (@supabase/supabase-js) en src/services/supabase.ts leyendo EXPO_PUBLIC_SUPABASE_URL/EXPO_PUBLIC_SUPABASE_ANON_KEY de variables de entorno, y crear el esquema inicial de Postgres (editions, people, profiles, activities, activity_results, medal_awards) con Row Level Security activado desde el primer día. El proyecto Supabase en sí (nuevo, propio de esta app) lo crea el usuario.",
+    "status": "done",
+    "priority": "must",
+    "acceptance_criteria": [
+      "El cliente de Supabase se inicializa sin credenciales hardcodeadas en el código",
+      "Existen las tablas editions/people/profiles/activities/activity_results/medal_awards",
+      "Todas las tablas tienen RLS activado (lectura pública donde corresponda, escritura restringida a usuarios autenticados con Person reclamada)",
+      "Una consulta de prueba sin sesión (rol anon) puede leer editions/activities/activity_results/medal_awards"
+    ],
+    "spec_path": "specs/f-010-supabase-setup/",
+    "dependencies": ["f-000-project-bootstrap"],
+    "tags": ["backend", "supabase", "infra"],
+    "created_at": "2026-07-19T00:00:00Z",
+    "updated_at": "2026-07-19T18:30:00Z"
+  },
+  {
+    "id": "f-011-auth-google-sso",
+    "title": "Autenticación con Google SSO y reclamación de persona",
+    "description": "Login exclusivamente con Google vía Supabase Auth. Al primer login, el usuario debe elegir de una lista qué Person del histórico es (bloqueando las ya reclamadas por otro usuario). Se crea un Profile con personId enlazado. No hay roles: cualquier usuario con Person reclamada puede escribir (ver ADR 0005); mientras no la haya reclamado, no puede.",
+    "status": "done",
+    "priority": "must",
+    "acceptance_criteria": [
+      "El usuario puede iniciar sesión únicamente con Google",
+      "Tras el primer login, si el Profile no tiene personId, se muestra una pantalla obligatoria para elegir su Person entre las no reclamadas",
+      "Una Person ya reclamada por otro usuario no aparece seleccionable",
+      "Un usuario autenticado sin Person reclamada no puede crear ni editar datos; en cuanto reclama su Person, puede"
+    ],
+    "spec_path": "specs/f-011-auth-google-sso/",
+    "dependencies": ["f-010-supabase-setup"],
+    "tags": ["auth", "sso", "supabase"],
+    "created_at": "2026-07-19T00:00:00Z",
+    "updated_at": "2026-07-20T00:00:00Z"
+  },
+  {
+    "id": "f-012-public-readonly-mode",
+    "title": "Modo de solo lectura sin inicio de sesión",
+    "description": "Cualquier visitante sin sesión puede navegar por ediciones, actividades, resultados y rankings (histórico, por edición, por actividad) sin necesidad de iniciar sesión. Las acciones de escritura (registrar resultados, gestionar personas/actividades) quedan ocultas y bloqueadas para visitantes anónimos.",
+    "status": "done",
+    "priority": "must",
+    "acceptance_criteria": [
+      "Un visitante sin sesión puede abrir la app y ver ediciones, resultados y rankings",
+      "Ningún control de escritura (crear/editar) es visible ni accionable sin sesión",
+      "Se ofrece un punto de entrada claro para iniciar sesión con Google desde el modo público"
+    ],
+    "spec_path": "specs/f-012-public-readonly-mode/",
+    "dependencies": ["f-011-auth-google-sso"],
+    "tags": ["auth", "public", "ux"],
+    "created_at": "2026-07-19T00:00:00Z",
+    "updated_at": "2026-07-20T12:00:00Z"
+  },
+  {
+    "id": "f-001-people-management",
+    "title": "Gestión del roster de personas (Person)",
+    "description": "CRUD (cualquier usuario autenticado con Person reclamada) del catálogo de personas participantes: nombre, si sigue activa. Necesario para poder añadir gente nueva a la familia/juegos sin tocar el histórico ya existente.",
+    "status": "done",
+    "priority": "should",
+    "acceptance_criteria": [
+      "Un usuario autenticado con Person reclamada puede añadir una nueva Person con nombre",
+      "Un usuario autenticado con Person reclamada puede marcar una Person como inactiva sin borrar su histórico de medallas",
+      "Un visitante anónimo, o un autenticado sin Person reclamada, no puede crear ni editar personas"
+    ],
+    "spec_path": "specs/f-001-people-management/",
+    "dependencies": ["f-011-auth-google-sso"],
+    "tags": ["people"],
+    "created_at": "2026-07-19T00:00:00Z",
+    "updated_at": "2026-07-20T18:00:00Z"
+  },
+  {
+    "id": "f-002-editions-management",
+    "title": "Gestión de ediciones (años)",
+    "description": "CRUD (cualquier usuario autenticado con Person reclamada) de ediciones del medallero: año, etiqueta opcional, fechas. Es la entidad raíz bajo la que se registran los resultados de una edición concreta.",
+    "status": "done",
+    "priority": "must",
+    "acceptance_criteria": [
+      "Un usuario autenticado con Person reclamada puede crear una nueva edición con año único",
+      "El listado de ediciones se ordena de más reciente a más antigua",
+      "Un visitante anónimo, o un autenticado sin Person reclamada, puede ver el listado de ediciones pero no crear ni editar"
+    ],
+    "spec_path": "specs/f-002-editions-management/",
+    "dependencies": ["f-011-auth-google-sso"],
+    "tags": ["edition", "core"],
+    "created_at": "2026-07-19T00:00:00Z",
+    "updated_at": "2026-07-20T19:00:00Z"
+  },
+  {
+    "id": "f-003-activities-catalog",
+    "title": "Catálogo de actividades",
+    "description": "CRUD (cualquier usuario autenticado con Person reclamada) del catálogo de actividades/juegos (Fútbol, Catán, Dardos...), reutilizable entre ediciones y repetible múltiples veces. Incluye buscador para reutilizar una actividad existente al registrar un resultado en vez de crear un duplicado.",
+    "status": "done",
+    "priority": "must",
+    "acceptance_criteria": [
+      "Un usuario autenticado con Person reclamada puede crear una actividad nueva con nombre",
+      "Al registrar un resultado, se puede buscar y seleccionar una actividad existente en vez de escribir el nombre de cero",
+      "Un visitante anónimo, o un autenticado sin Person reclamada, puede ver el catálogo pero no crear ni editar actividades"
+    ],
+    "spec_path": "specs/f-003-activities-catalog/",
+    "dependencies": ["f-011-auth-google-sso"],
+    "tags": ["activity", "core"],
+    "created_at": "2026-07-19T00:00:00Z",
+    "updated_at": "2026-07-20T20:30:00Z"
+  },
+  {
+    "id": "f-004-medal-results-registration",
+    "title": "Registro de resultados y medallas de una prueba",
+    "description": "Feature núcleo: cualquier usuario autenticado con Person reclamada registra una nueva prueba (ActivityResult) dentro de una edición eligiendo/creando una actividad. Primero fija quién participó en la prueba (participantIds, censo completo) y después asigna las medallas ORO/PLATA/BRONCE seleccionando una o varias personas por color (varias personas en el mismo color = empate o victoria por equipo, ver ADR 0004). 'Participó sin ganar medalla' es un estado explícito almacenado (persona en participantIds pero en ningún MedalAward), no algo derivado; es lo que permite el promedio de medallas por participación. Una misma actividad se puede repetir tantas veces como se quiera dentro de la misma edición.",
+    "status": "done",
+    "priority": "must",
+    "acceptance_criteria": [
+      "Un usuario autenticado con Person reclamada puede crear una nueva prueba dentro de una edición, eligiendo una actividad existente o creando una nueva",
+      "Al registrar la prueba se selecciona el conjunto de personas que participaron (participantIds), independientemente de que ganen medalla",
+      "Para cada color de medalla, puede seleccionar una o varias personas de entre las que participaron",
+      "Una persona con medalla queda automáticamente incluida entre los participantes; no se puede otorgar una medalla a alguien que no participó",
+      "Queda registrado quién participó sin ganar ninguna medalla (participante sin MedalAward), diferenciándolo de quien no participó",
+      "Una persona no puede recibir dos medallas distintas en la misma prueba",
+      "Un visitante anónimo, o un autenticado sin Person reclamada, no puede registrar ni editar resultados"
+    ],
+    "spec_path": "specs/f-004-medal-results-registration/",
+    "dependencies": ["f-002-editions-management", "f-003-activities-catalog", "f-001-people-management"],
+    "tags": ["activity-result", "medal", "core"],
+    "created_at": "2026-07-19T00:00:00Z",
+    "updated_at": "2026-07-20T21:00:00Z"
+  },
+  {
+    "id": "f-005-edition-ranking",
+    "title": "Clasificación de una edición",
+    "description": "Vista de clasificación (ranking) de las personas dentro de una edición concreta, agregando sus MedalAward de esa edición, para ver quién va ganando ese año. Como se registra quién participó en cada prueba (participantIds), la clasificación puede mostrar también el promedio de medallas por participación dentro de la edición.",
+    "status": "done",
+    "priority": "must",
+    "acceptance_criteria": [
+      "Se puede ver la clasificación ordenada de una edición, con el desglose de oros/platas/bronces de cada persona",
+      "Se muestra, junto al desglose, el número de pruebas en las que cada persona participó y su promedio de medallas por participación en esa edición",
+      "La clasificación se actualiza al registrar un nuevo resultado en esa edición",
+      "Accesible sin necesidad de iniciar sesión"
+    ],
+    "spec_path": "specs/f-005-edition-ranking/",
+    "dependencies": ["f-004-medal-results-registration"],
+    "tags": ["ranking", "edition"],
+    "created_at": "2026-07-19T00:00:00Z",
+    "updated_at": "2026-07-20T21:00:00Z"
+  },
+  {
+    "id": "f-006-historic-ranking",
+    "title": "Clasificación histórica",
+    "description": "Vista de clasificación agregada de todas las ediciones, para ver quién va ganando de forma histórica (equivalente a la hoja RESULTADOS del xlsx histórico). Además del recuento total de medallas, ofrece un ranking por promedio de medallas por participación (medallas ganadas ÷ pruebas jugadas), posible gracias al registro de participantIds en cada prueba, que mide eficiencia y no solo volumen.",
+    "status": "done",
+    "priority": "must",
+    "acceptance_criteria": [
+      "Se puede ver la clasificación histórica ordenada, agregando todas las ediciones",
+      "Se puede ver el desglose de oros/platas/bronces totales de cada persona",
+      "Se puede ver un ranking alternativo por promedio de medallas por participación (medallas totales ÷ número total de pruebas en las que la persona participó)",
+      "Accesible sin necesidad de iniciar sesión"
+    ],
+    "spec_path": "specs/f-006-historic-ranking/",
+    "dependencies": ["f-004-medal-results-registration"],
+    "tags": ["ranking", "historic"],
+    "created_at": "2026-07-19T00:00:00Z",
+    "updated_at": "2026-07-20T22:30:00Z"
+  },
+  {
+    "id": "f-007-activity-ranking",
+    "title": "Histórico y clasificación por actividad",
+    "description": "Vista del histórico de una actividad concreta a lo largo de todas las ediciones en las que se ha jugado, con su propia clasificación (equivalente a la hoja CATAN del xlsx histórico, generalizada a cualquier actividad). Al conocerse quién participó en cada prueba de la actividad (participantIds), la clasificación puede mostrar el promedio de medallas por participación en esa actividad (quién rinde mejor por partida jugada, no solo quién acumula más).",
+    "status": "done",
+    "priority": "should",
+    "acceptance_criteria": [
+      "Se puede elegir una actividad y ver todas sus pruebas históricas con sus medallas",
+      "Se puede ver la clasificación agregada de esa actividad concreta, incluyendo cuántas de sus pruebas jugó cada persona y su promedio de medallas por participación en la actividad",
+      "Accesible sin necesidad de iniciar sesión"
+    ],
+    "spec_path": "specs/f-007-activity-ranking/",
+    "dependencies": ["f-004-medal-results-registration"],
+    "tags": ["ranking", "activity"],
+    "created_at": "2026-07-19T00:00:00Z",
+    "updated_at": "2026-07-20T23:30:00Z"
+  },
+  {
+    "id": "f-008-historical-data-import",
+    "title": "Importación del histórico (historico-medallas.xlsx)",
+    "description": "Migración puntual de historico-medallas.xlsx (ediciones 2009-2025) a Supabase, tomando como fuente data/historico-medallas.json: personas, ediciones, actividades, resultados, participación y medallas. El JSON resolvió la codificación de la participación (los tres estados de cada celda: medalla ganada, 'v' = participó sin medalla (participants[].medal: null) y vacío/'x'/'X' = no participó, ausente de la lista), pero NO normalizó los nombres de actividad: los preserva tal cual aparecen en el Excel original, incluyendo variantes de mayúsculas y errores tipográficos (p. ej. 'Lazamiento de disco' vs 'Lanzamiento de disco', 'fronton' vs 'Frontón', 'call of duty' vs 'Call of Duty'). Por eso la importación debe, además de preservar la participación sin medalla (no solo los ganadores), normalizar y deduplicar esos nombres al construir el catálogo Activity.",
+    "status": "done",
+    "priority": "should",
+    "acceptance_criteria": [
+      "Todas las ediciones 2009-2025 del JSON quedan representadas como Edition",
+      "Todas las personas del JSON quedan representadas como Person, sin duplicados por variantes de nombre",
+      "Los nombres de actividad del JSON se normalizan y deduplican al crear el catálogo Activity, de modo que variantes de mayúsculas o errores tipográficos (p. ej. 'fronton' y 'Frontón', o 'Lazamiento de disco' y 'Lanzamiento de disco') se resuelven a una única Activity y no generan actividades duplicadas",
+      "Cada activityResult del JSON queda representado como un ActivityResult cuyo participantIds contiene a todos los participants (con y sin medalla), y con sus MedalAward correspondientes solo para los que tienen medalla",
+      "Quien participó sin ganar medalla (participants[].medal: null) queda como participante del ActivityResult pero sin ningún MedalAward, distinguiéndose de quien no participó (ausente)",
+      "El ranking histórico calculado tras la importación coincide con los totales de la hoja RESULTADOS del xlsx, y el promedio de medallas por participación es calculable a partir de los datos importados"
+    ],
+    "spec_path": "specs/f-008-historical-data-import/",
+    "dependencies": ["f-002-editions-management", "f-003-activities-catalog", "f-001-people-management", "f-004-medal-results-registration"],
+    "tags": ["data-migration", "historic"],
+    "created_at": "2026-07-19T00:00:00Z",
+    "updated_at": "2026-07-21T02:00:00Z"
+  },
+  {
+    "id": "f-013-auth-choice-screen",
+    "title": "Pantalla previa de elección de sesión (Google o invitado)",
+    "description": "Al abrir la app sin sesión (y sin haber elegido ya 'invitado' en esta sesión), mostrar una pantalla de bienvenida con dos opciones: 'Iniciar sesión con Google' (botón con branding oficial de Google — logo, colores, tipografía según Google Identity guidelines) o 'Continuar como invitado' (navega al home en modo lectura pública, sin autenticar). No reimplementa el flujo OAuth (f-011) ni el modo lectura pública (f-012), que ya existen: esta feature es solo la pantalla de entrada que ofrece la elección explícita antes del home.",
+    "status": "done",
+    "priority": "should",
+    "acceptance_criteria": [
+      "Al abrir la app sin sesión activa y sin elección de invitado previa en la sesión, se muestra la pantalla de bienvenida antes de llegar al home",
+      "El botón de Google sigue el branding oficial (logo, color, tipografía) de Google Identity",
+      "Elegir 'Continuar como invitado' navega al home en modo lectura pública sin disparar login",
+      "Elegir 'Iniciar sesión con Google' dispara el flujo OAuth ya existente de f-011",
+      "Un usuario ya autenticado, o que ya eligió invitado en esta sesión de la app, no vuelve a ver esta pantalla hasta reabrir la app o cerrar sesión"
+    ],
+    "spec_path": "specs/f-013-auth-choice-screen/",
+    "dependencies": ["f-011-auth-google-sso", "f-012-public-readonly-mode"],
+    "tags": ["auth", "onboarding", "ux"],
+    "created_at": "2026-07-20T00:00:00Z",
+    "updated_at": "2026-07-20T23:59:59Z"
+  },
+  {
+    "id": "f-014-bottom-tabs-navigation",
+    "title": "Navegación principal por pestañas inferiores con acceso rápido a registro",
+    "description": "Reemplazar el Stack plano actual por una barra de tabs inferior moderna con 3 pestañas — Ediciones, Clasificaciones (agrupa ranking histórico, por edición y por actividad), Participantes — y en el centro un botón elevado con icono (+) para registro rápido de resultado de actividad (navega a results/new), visible en todas las pestañas. No reimplementa los listados/rankings/registro ya existentes (f-001, f-002, f-004, f-005, f-006, f-007), solo reorganiza su navegación bajo tabs.",
+    "status": "done",
+    "priority": "should",
+    "acceptance_criteria": [
+      "La navegación principal muestra una barra inferior con 3 pestañas: Ediciones, Clasificaciones, Participantes, cada una con icono y diseño acorde al tema visual de la app",
+      "Existe un botón central elevado con icono (+) visible en las 3 pestañas que abre el flujo de registrar resultado (results/new)",
+      "La pestaña Clasificaciones da acceso a los 3 rankings existentes (histórico, por edición, por actividad) sin duplicar su lógica",
+      "El botón (+) es accionable solo para usuarios con Person reclamada (canWrite); en modo invitado o sin Person reclamada, el botón sigue visible pero lleva a inicio de sesión/onboarding en vez de al formulario",
+      "Las pantallas de detalle existentes (edición, persona, actividad, ranking concreto) siguen siendo accesibles como stack dentro de su pestaña correspondiente"
+    ],
+    "spec_path": "specs/f-014-bottom-tabs-navigation/",
+    "dependencies": ["f-001-people-management", "f-002-editions-management", "f-004-medal-results-registration", "f-005-edition-ranking", "f-006-historic-ranking", "f-007-activity-ranking"],
+    "tags": ["navigation", "ux", "tabs"],
+    "created_at": "2026-07-20T00:00:00Z",
+    "updated_at": "2026-07-20T13:00:00Z"
+  },
+  {
+    "id": "f-015-settings-tab",
+    "title": "Pestaña de Ajustes (cuenta + tema)",
+    "description": "Añadir una 4ª pestaña 'Ajustes' a la barra de tabs inferior (junto a Ediciones, Clasificaciones, Participantes), reorganizando el FAB central de registrar resultado para quedar entre 2 tabs a la izquierda y 2 a la derecha. La pestaña Ajustes absorbe el contenido que hoy vive en el modal src/app/account.tsx (info de cuenta autenticada + cerrar sesión, o SignInPrompt en modo invitado) y añade un selector de tema claro/oscuro/sistema usando el setPreference que ya expone ThemeProvider pero que hoy no tiene ninguna UI. Al pasar esto a una tab fija, el modal /account y su botón headerRight en las otras pestañas quedan redundantes.",
+    "status": "done",
+    "priority": "should",
+    "acceptance_criteria": [
+      "La barra de tabs muestra 4 pestañas — Ediciones, Clasificaciones, Participantes, Ajustes — con el FAB central de registrar resultado repartido 2 a la izquierda y 2 a la derecha",
+      "La pestaña Ajustes muestra, para un usuario autenticado, su email y un botón para cerrar sesión; para un visitante/invitado, el mismo punto de entrada de inicio de sesión con Google que ya existe",
+      "La pestaña Ajustes incluye un selector de tema (claro/oscuro/sistema) que usa el setPreference de ThemeProvider y persiste igual que hoy (AsyncStorage)",
+      "El modal /account y su botón headerRight se retiran (o se documenta explícitamente en design.md por qué se mantienen) una vez su contenido vive en la pestaña Ajustes, sin duplicar lógica de cuenta/sesión"
+    ],
+    "spec_path": "specs/f-015-settings-tab/",
+    "dependencies": ["f-014-bottom-tabs-navigation"],
+    "tags": ["settings", "navigation", "ux", "theme"],
+    "created_at": "2026-07-21T00:00:00Z",
+    "updated_at": "2026-07-21T13:30:00Z"
+  },
+  {
+    "id": "f-016-edition-detail-view",
+    "title": "Vista de detalle de edición (participantes, clasificación y alta rápida de resultado)",
+    "description": "La ruta /editions/[id] pasa de ser el formulario de edición de metadatos a ser una vista de detalle de la edición: lista de participantes (personas con al menos un ActivityResult en esa edición) y su clasificación (reutilizando f-005), más un FAB que navega a /results/new con la edición preseleccionada para registrar un nuevo resultado de actividad. El formulario de edición de campos (año/label/fechas) que hoy vive en /editions/[id] se mueve a /editions/[id]/edit, accesible solo con canWrite.",
+    "status": "done",
+    "priority": "should",
+    "acceptance_criteria": [
+      "Al pulsar una edición en el listado, se navega a /editions/[id] y se ve la lista de participantes de esa edición junto a su clasificación (oros/platas/bronces, participaciones, promedio)",
+      "La vista de detalle es accesible sin necesidad de iniciar sesión (igual que f-005)",
+      "Un FAB en la vista de detalle, visible solo si canWrite, navega a /results/new con la edición ya preseleccionada",
+      "El formulario de edición de metadatos de la edición sigue existiendo, ahora en /editions/[id]/edit, solo accesible con canWrite",
+      "Un visitante anónimo, o un autenticado sin Person reclamada, ve la vista de detalle pero no el FAB accionable ni puede acceder al formulario de edición"
+    ],
+    "spec_path": "specs/f-016-edition-detail-view/",
+    "dependencies": ["f-002-editions-management", "f-004-medal-results-registration", "f-005-edition-ranking"],
+    "tags": ["edition", "ranking", "ux"],
+    "created_at": "2026-07-21T00:00:00Z",
+    "updated_at": "2026-07-21T14:00:00Z"
+  },
+  {
+    "id": "f-017-person-detail-view",
+    "title": "Vista de detalle de participante (resumen de medallas, histórico de pruebas y alta rápida de resultado)",
+    "description": "La ruta /people/[id] pasa de ser el formulario de edición de una Person a ser una vista de detalle pública: resumen de medallas (oro/plata/bronce, participaciones, promedio por participación, agregando todas las ediciones, igual que la fila de esa persona en f-006) y el histórico de pruebas (ActivityResult) en las que participó, con edición/actividad/medalla obtenida en cada una. Un FAB, visible solo con canWrite, navega a /results/new preseleccionando a esta persona como participante. El formulario de edición (nombre/activa) que hoy vive en /people/[id] se mueve a /people/[id]/edit, accesible solo con canWrite.",
+    "status": "done",
+    "priority": "should",
+    "acceptance_criteria": [
+      "Al pulsar una persona en el listado, se navega a /people/[id] y se ve su resumen de medallas (oro/plata/bronce/total, participaciones, promedio) agregando todas las ediciones",
+      "La vista de detalle muestra el histórico de pruebas en las que participó esa persona (edición, actividad, medalla si la obtuvo), más recientes primero",
+      "La vista de detalle es accesible sin necesidad de iniciar sesión",
+      "Un FAB en la vista de detalle, visible solo si canWrite, navega a /results/new con esta persona ya preseleccionada como participante",
+      "El formulario de edición de la persona (nombre, activa/inactiva) sigue existiendo, ahora en /people/[id]/edit, solo accesible con canWrite",
+      "Un visitante anónimo, o un autenticado sin Person reclamada, ve la vista de detalle pero no el FAB accionable ni puede acceder al formulario de edición"
+    ],
+    "spec_path": "specs/f-017-person-detail-view/",
+    "dependencies": ["f-001-people-management", "f-004-medal-results-registration", "f-006-historic-ranking"],
+    "tags": ["people", "ranking", "ux"],
+    "created_at": "2026-07-21T00:00:00Z",
+    "updated_at": "2026-07-21T16:00:00Z"
+  },
+  {
+    "id": "f-018-person-performance-charts",
+    "title": "Gráficos de rendimiento del participante en su vista de detalle",
+    "description": "En /people/[id] (f-017) se añaden gráficos de rendimiento propios de esa persona: puntos obtenidos por edición, promedio de puntos por participación por edición, y un listado de las actividades en las que ha participado ordenado por su propio mejor promedio de puntos por participación en cada actividad. Reutiliza la agregación existente (historic/edition/activity ranking, f-005/f-006/f-007) filtrada a esa persona, sin duplicar lógica de cálculo de puntos.",
+    "status": "done",
+    "priority": "should",
+    "acceptance_criteria": [
+      "En /people/[id] se muestra un gráfico de puntos obtenidos por esa persona en cada edición en la que participó",
+      "Se muestra el promedio de puntos por participación de esa persona en cada edición en la que jugó",
+      "Se muestra un listado de las actividades en las que ha participado esa persona, ordenado de mayor a menor por su propio promedio de puntos por participación en cada actividad",
+      "Si la persona no tiene participaciones registradas, se muestra un estado vacío en vez de gráficos vacíos o rotos",
+      "Los gráficos son visibles sin necesidad de iniciar sesión, igual que el resto de la vista de detalle (f-017)"
+    ],
+    "spec_path": "specs/f-018-person-performance-charts/",
+    "dependencies": ["f-017-person-detail-view", "f-006-historic-ranking", "f-007-activity-ranking"],
+    "tags": ["people", "ranking", "charts"],
+    "created_at": "2026-07-21T00:00:00Z",
+    "updated_at": "2026-07-21T19:00:00Z"
+  },
+  {
+    "id": "f-019-results-wizard-flow",
+    "title": "Registrar resultado como asistente por pasos (wizard)",
+    "description": "Rediseñar /results/new (f-004) de un formulario largo con scroll a un asistente por pasos, uno por acción: (1) Edición, (2) Actividad (buscar/crear), (3) Participantes, (4) Medallas (oro/plata/bronce juntas en un único paso), (5) Detalles (fecha/notas), (6) Resumen final (repaso de edición/actividad/participantes/medallas elegidas) con el botón de guardar. Navegación Siguiente/Atrás entre pasos, con indicador de progreso. No cambia la lógica de negocio ni las validaciones ya existentes (createActivityResult, participantIds/medalAwards), ni los parámetros de preselección editionId/participantId ya soportados (f-016/f-017): solo reorganiza la interacción en pasos táctiles en vez de un scroll único.",
+    "status": "done",
+    "priority": "should",
+    "acceptance_criteria": [
+      "Al abrir /results/new se ve un asistente con un paso a la vez, no un formulario largo con scroll único",
+      "Los pasos son, en este orden: Edición, Actividad, Participantes, Medallas, Detalles, Resumen",
+      "En el paso de Participantes, tocar una persona la añade/quita como participante; en el paso de Medallas, tocar una persona asignada a un color la marca/desmarca, igual que hoy",
+      "Cada paso impide avanzar si le falta una selección obligatoria (edición, actividad, al menos un participante, al menos una medalla asignada), mostrando el error igual que hoy",
+      "El paso de Resumen muestra edición, actividad, participantes y medallas elegidas antes de guardar, y desde ahí se puede volver a un paso anterior a corregir",
+      "Existe navegación Atrás en cada paso salvo el primero, y un indicador visible de en qué paso está el usuario y cuántos quedan",
+      "editionId y participantId (preselección desde f-016/f-017) siguen preseleccionando edición/participante y el asistente arranca ya en el paso siguiente al que quedó resuelto por la preselección, o al menos con esa selección ya hecha",
+      "El resultado final que se guarda es idéntico en estructura y validación al que produce hoy el formulario de f-004 (mismo createActivityResult, mismas reglas de negocio)"
+    ],
+    "spec_path": "specs/f-019-results-wizard-flow/",
+    "dependencies": ["f-004-medal-results-registration"],
+    "tags": ["results", "ux", "wizard"],
+    "created_at": "2026-07-21T00:00:00Z",
+    "updated_at": "2026-07-21T18:00:00Z"
+  },
+  {
+    "id": "f-020-edition-detail-tabs",
+    "title": "Pestañas en el detalle de edición (Clasificación con toggle puntos/promedio y Actividades)",
+    "description": "Dividir /editions/[id] (f-016) en pestañas: Clasificación (la lista ya existente de f-016/f-005, más un toggle 'Por puntos'/'Por promedio' reutilizando sortRanking, que hoy solo tienen el ranking histórico y el de actividad) y Actividades (histórico de las pruebas jugadas en esa edición concreta: actividad, número de participantes y medallas con sus ganadores, más recientes primero), siguiendo el mismo patrón de pestañas ya usado en /people/[id] (addendum de f-018). No cambia la cabecera (año/label), el botón 'Editar edición' ni el FAB de registrar resultado, que quedan fuera de las pestañas.",
+    "status": "done",
+    "priority": "should",
+    "acceptance_criteria": [
+      "En /editions/[id] la navegación se divide en 2 pestañas: Clasificación y Actividades",
+      "La pestaña Clasificación muestra la misma lista de hoy (posición, desglose de medallas, puntos, participaciones, promedio) y añade un toggle 'Por puntos'/'Por promedio' que reordena en cliente sin volver a consultar el backend",
+      "La pestaña Actividades muestra el histórico de pruebas jugadas en esa edición (actividad, número de participantes, medallas con nombres de ganadores), de la más reciente a la más antigua",
+      "Si la edición no tiene ninguna prueba registrada, cada pestaña muestra su propio estado vacío en vez de una pestaña rota o compartida",
+      "El botón 'Editar edición' (solo canWrite) y el FAB de registrar resultado (solo canWrite) siguen visibles igual que hoy, independientemente de la pestaña activa",
+      "Ambas pestañas son accesibles sin necesidad de iniciar sesión"
+    ],
+    "spec_path": "specs/f-020-edition-detail-tabs/",
+    "dependencies": ["f-016-edition-detail-view"],
+    "tags": ["edition", "ranking", "ux"],
+    "created_at": "2026-07-21T00:00:00Z",
+    "updated_at": "2026-07-21T20:30:00Z"
+  },
+  {
+    "id": "f-021-ranking-filters",
+    "title": "Filtros en clasificaciones y listados (histórico por rango de años, participantes, edición-actividad)",
+    "description": "Añade filtros pedidos por el usuario en pantallas de clasificaciones/listados que hoy no tienen ninguno: (1) rango de años (Todas / Últimos 5 / Últimos 10, calculado sobre el año de edición más reciente existente, no la fecha real) en la Clasificación histórica; (2) búsqueda por nombre y filtro Todos/Activos/Inactivos en el listado de Participantes; (3) toggle 'Por puntos'/'Por promedio' (reutilizando sortRanking) en la Clasificación por edición (rankings/editions/[id].tsx), que hoy no lo tiene a diferencia de Histórico y Actividad; (4) filtro por edición (chips, cliente, sin refetch) en el histórico de pruebas del detalle de una actividad (rankings/activities/[id].tsx). No añade búsqueda a los listados planos de Ediciones (~17 filas hoy, tamaño no justifica un buscador).",
+    "status": "done",
+    "priority": "should",
+    "acceptance_criteria": [
+      "En Clasificación histórica se puede acotar a 'Últimos 5 años', 'Últimos 10 años' o 'Todas', recalculando puntos/promedio solo con los datos de esas ediciones",
+      "En Participantes hay un buscador por nombre y un filtro Todos/Activos/Inactivos, ambos combinables",
+      "En Clasificación por edición (rankings/editions/[id].tsx) existe el mismo toggle 'Por puntos'/'Por promedio' que ya tienen Histórico y Actividad",
+      "En el detalle de una actividad, el histórico de pruebas se puede acotar a una edición concreta (chip) o ver todas, sin volver a consultar el backend",
+      "Todos los filtros son accesibles sin necesidad de iniciar sesión, igual que el resto de estas pantallas"
+    ],
+    "spec_path": "specs/f-021-ranking-filters/",
+    "dependencies": ["f-005-edition-ranking", "f-006-historic-ranking", "f-007-activity-ranking", "f-001-people-management"],
+    "tags": ["ranking", "people", "activity", "ux", "filters"],
+    "created_at": "2026-07-21T00:00:00Z",
+    "updated_at": "2026-07-21T21:00:00Z"
+  }
+]

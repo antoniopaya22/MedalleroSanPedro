@@ -1,0 +1,13 @@
+# f-019-results-wizard-flow - Tareas
+
+- [x] En `src/app/results/new.tsx`, anadir el estado `currentStep` y la enumeracion/constante de los 6 pasos (Edicion, Actividad, Participantes, Medallas, Detalles, Resumen), conservando intacto todo el estado y los handlers actuales (`toggleParticipant`, `toggleMedal`, `handleCreateActivity`, `handleSave`, carga y preseleccion)
+- [x] Extraer una funcion `validateStep(step)` a partir de la cascada de `handleSave`, reutilizando literalmente los mismos mensajes ("Elige una edicion.", "Elige una actividad.", "Selecciona al menos un participante.", "Asigna al menos una medalla."); NO tocar `handleSave` (queda como red de seguridad y guardado final)
+- [x] Implementar `goNext()` (valida el paso actual con `validateStep`, si falla fija `error` y no avanza; si pasa limpia `error` y avanza), `goBack()` y `goToStep(step)` (ambos limpian `error`)
+- [x] Reestructurar el render para mostrar UN paso a la vez segun `currentStep` (switch / render condicional), reutilizando `SectionCard`, `Card`, `ListRow`, `TextField`, `Divider` existentes; el paso Medallas renderiza los tres colores (oro/plata/bronce) juntos con su `accentColor`
+- [x] Anadir el indicador de progreso ("Paso X de 6" + barra con `View`/`width %` y `colors.primary`, o dots), sin libreria ni SVG ni componente nuevo en `src/components/ui`
+- [x] Adaptar la barra inferior fija: "Atras" (oculto/deshabilitado en el paso Edicion) + "Siguiente" en pasos 0-4; "Atras" + "Guardar prueba" (`handleSave`) en el paso Resumen; `ErrorBanner` encima como hoy
+- [x] Implementar el paso Resumen: repaso de edicion, actividad, participantes y medallas por color (+ fecha/notas si existen) leido del estado actual (refleja cambios al volver), con accesos "Editar" por bloque via `goToStep`
+- [x] Fijar el paso inicial segun preseleccion tras la carga: sin params -> Edicion; `editionId` valido -> Actividad; `participantId` valido (persona activa) -> Edicion con la persona ya en participantes; ambos -> Actividad (regla: primer paso obligatorio no resuelto por la preseleccion)
+- [x] Conservar el guard `canWrite` (`router.replace('/')` + `return null`) sin cambios funcionales
+- [x] Tests app (`src/__tests__/app/results/new.test.tsx`): un solo paso visible + indicador "Paso 1 de 6"; no avanzar sin edicion/actividad/participante/medalla con mensaje exacto y avanzar tras corregir; Siguiente/Atras conserva selecciones; Resumen refleja cambios; guardar invoca `createActivityResult` con el mismo payload y hace `router.back()`; error de guardado permanece en Resumen; preseleccion `editionId`/`participantId`/sin params; sin `canWrite` redirige
+- [x] `npx tsc --noEmit` limpio y `npm test` en verde
